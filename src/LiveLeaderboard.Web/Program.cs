@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
 using LiveLeaderboard.Core.Abstractions;
 using LiveLeaderboard.Data.Redis;
+using LiveLeaderboard.Data.Scoring;
 using LiveLeaderboard.Web.Components;
 using LiveLeaderboard.Web.Components.Account;
 using LiveLeaderboard.Data.Data;
@@ -53,6 +54,7 @@ builder.Services.AddScoped<RedisLeaderboardReader>();
 builder.Services.AddScoped<RedisProjectionRebuilder>();
 builder.Services.AddScoped<ILeaderboardReader>(services => services.GetRequiredService<RedisLeaderboardReader>());
 builder.Services.AddScoped<ILeaderboardProjector>(services => services.GetRequiredService<RedisProjectionRebuilder>());
+builder.Services.AddSingleton<IProjectionWorkStore, ProjectionOutboxStore>();
 
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 
