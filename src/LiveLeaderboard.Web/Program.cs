@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using StackExchange.Redis;
+using LiveLeaderboard.Core.Abstractions;
+using LiveLeaderboard.Data.Redis;
 using LiveLeaderboard.Web.Components;
 using LiveLeaderboard.Web.Components.Account;
 using LiveLeaderboard.Data.Data;
@@ -41,6 +44,15 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("Scorer", policy => policy.RequireRole("Scorer", "Admin"));
     options.AddPolicy("Admin", policy => policy.RequireRole("Admin"));
 });
+
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
+    ConnectionMultiplexer.Connect($"{redisConnectionString},abortConnect=false"));
+builder.Services.AddSingleton<RedisLeaderboardStore>();
+builder.Services.AddScoped<RedisLeaderboardReader>();
+builder.Services.AddScoped<RedisProjectionRebuilder>();
+builder.Services.AddScoped<ILeaderboardReader>(services => services.GetRequiredService<RedisLeaderboardReader>());
+builder.Services.AddScoped<ILeaderboardProjector>(services => services.GetRequiredService<RedisProjectionRebuilder>());
 
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 
