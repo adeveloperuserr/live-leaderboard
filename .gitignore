@@ -1,0 +1,27 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.db
+*.db-shm
+*.db-wal
+
+## IDEs
+.vs/
+.idea/
+*.DotSettings.user
+
+## Local configuration and secrets
+appsettings.Local.json
+secrets.json
+.env
+
+## Test and browser artifacts
+TestResults/
+playwright-report/
+test-results/
+
+## Agent scratch space
+.superpowers/sdd/*
+!.superpowers/sdd/.gitignore

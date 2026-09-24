@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/LiveLeaderboard.Core/LiveLeaderboard.Core.csproj" />
+    <Project Path="src/LiveLeaderboard.Data/LiveLeaderboard.Data.csproj" />
+    <Project Path="src/LiveLeaderboard.Web/LiveLeaderboard.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/LiveLeaderboard.Tests/LiveLeaderboard.Tests.csproj" />
+  </Folder>
+</Solution>
