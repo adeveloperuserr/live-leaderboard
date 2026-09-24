@@ -1,0 +1,36 @@
+@if (!IsAvailable)
+{
+    <div class="projection-status projection-unavailable" data-testid="projection-unavailable" role="status">
+        <strong>Leaderboard is catching up</strong>
+        <span>@(ErrorMessage ?? "The live projection is not available yet. Please try again shortly.")</span>
+    </div>
+}
+else
+{
+    <div class="projection-status @(IsLive ? "projection-live" : "projection-completed")" role="status">
+        @if (IsLive)
+        {
+            <span class="status-pill live-pill" data-testid="live-status"><span class="live-dot"></span>LIVE</span>
+            <span>Scores update for everyone in real time.</span>
+        }
+        else
+        {
+            <span class="status-pill completed-pill" data-testid="completed-status">FINAL</span>
+            <span>This competition is complete.</span>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsAvailable { get; set; }
+
+    [Parameter]
+    public bool IsLive { get; set; }
+
+    [Parameter]
+    public DateTime ProjectedAtUtc { get; set; }
+
+    [Parameter]
+    public string? ErrorMessage { get; set; }
+}

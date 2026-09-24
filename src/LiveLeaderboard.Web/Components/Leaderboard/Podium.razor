@@ -1,0 +1,32 @@
+@using LiveLeaderboard.Core.Leaderboards
+
+@if (Snapshot.Rows.Count > 0)
+{
+    <section class="podium" aria-label="Top three participants">
+        @foreach (var row in Snapshot.Rows.Take(3))
+        {
+            <a class="podium-card podium-rank-@row.Rank" href="@ParticipantHref(row.ParticipantId)">
+                <span class="podium-rank">@row.Rank</span>
+                <span class="podium-name">@row.DisplayName</span>
+                @if (!string.IsNullOrWhiteSpace(row.Handle))
+                {
+                    <span class="participant-handle">@($"@{row.Handle}")</span>
+                }
+                <strong class="podium-score">@row.Score.ToString("N0")</strong>
+            </a>
+        }
+    </section>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public LeaderboardSnapshot Snapshot { get; set; } = default!;
+
+    [Parameter]
+    public string? CompetitionSlug { get; set; }
+
+    private string ParticipantHref(Guid participantId) =>
+        string.IsNullOrWhiteSpace(CompetitionSlug)
+            ? $"#participant-{participantId:N}"
+            : $"/leaderboards/{CompetitionSlug}/participants/{participantId}";
+}

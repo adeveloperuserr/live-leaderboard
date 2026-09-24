@@ -1,0 +1,185 @@
+@page "/leaderboards/{Slug}"
+@rendermode InteractiveServer
+@using LiveLeaderboard.Core.Abstractions
+@using LiveLeaderboard.Core.Leaderboards
+@using LiveLeaderboard.Data.Leaderboards
+@using LiveLeaderboard.Web.Components.Leaderboard
+@implements IAsyncDisposable
+@inject PublicLeaderboardService LeaderboardService
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(competition?.Name ?? "Leaderboard")</PageTitle>
+
+<div class="leaderboard-page">
+    @if (isLoading)
+    {
+        <section class="page-state" data-testid="leaderboard-loading" aria-live="polite">
+            <span class="loading-pulse"></span>
+            <strong>Loading leaderboard…</strong>
+            <span>Connecting to the live projection.</span>
+        </section>
+    }
+    else if (competition is null)
+    {
+        <section class="page-state page-state-error" data-testid="leaderboard-not-found">
+            <strong>Leaderboard not found</strong>
+            <span>This competition is not public or does not exist.</span>
+        </section>
+    }
+    else
+    {
+        <header class="leaderboard-hero">
+            <div>
+                <a class="back-link" href="/">← All competitions</a>
+                <p class="eyebrow">Public competition</p>
+                <h1>@competition.Name</h1>
+                @if (!string.IsNullOrWhiteSpace(competition.Description))
+                {
+                    <p class="hero-description">@competition.Description</p>
+                }
+            </div>
+            <div class="hero-meta">
+                <span class="competition-slug">/@competition.Slug</span>
+                <span>@(competition.IsLive ? "Scores are arriving now" : "Final standings")</span>
+            </div>
+        </header>
+
+        <ProjectionStatus
+            IsAvailable="readResult?.IsAvailable == true"
+            IsLive="competition.IsLive"
+            ProjectedAtUtc="readResult?.Snapshot?.ProjectedAtUtc ?? DateTime.UtcNow"
+            ErrorMessage="readResult?.ErrorMessage" />
+
+        @if (readResult?.Snapshot is { } snapshot)
+        {
+            <Podium Snapshot="snapshot" CompetitionSlug="competition.Slug" />
+            <LeaderboardTable
+                Snapshot="snapshot"
+                CompetitionSlug="competition.Slug"
+                IsLive="competition.IsLive"
+                IsLoadingMore="isLoadingMore"
+                OnLoadMore="LoadMoreAsync" />
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Slug { get; set; } = string.Empty;
+
+    private PublicCompetitionView? competition;
+    private LeaderboardReadResult? readResult;
+    private LeaderboardRealtimeClient? realtimeClient;
+    private bool isLoading = true;
+    private bool isLoadingMore;
+    private bool realtimeStarted;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await DisposeRealtimeAsync();
+        isLoading = true;
+        readResult = null;
+        competition = await LeaderboardService.GetPublicCompetitionAsync(Slug);
+
+        if (competition is not null)
+        {
+            readResult = await LeaderboardService.GetSnapshotAsync(competition.Id, 1, 50);
+        }
+
+        isLoading = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (competition is null || !competition.IsLive || realtimeStarted)
+        {
+            return;
+        }
+
+        realtimeStarted = true;
+        realtimeClient = new LeaderboardRealtimeClient(NavigationManager);
+        realtimeClient.SnapshotReceived += ReceiveSnapshotAsync;
+
+        try
+        {
+            await realtimeClient.StartAsync(competition.Id, ReloadAfterReconnectAsync);
+        }
+        catch (InvalidOperationException)
+        {
+            realtimeStarted = false;
+            await realtimeClient.DisposeAsync();
+            realtimeClient = null;
+        }
+    }
+
+    private async Task ReceiveSnapshotAsync(LeaderboardSnapshot snapshot)
+    {
+        if (competition?.Id != snapshot.CompetitionId)
+        {
+            return;
+        }
+
+        readResult = LeaderboardReadResult.Available(snapshot);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ReloadAfterReconnectAsync()
+    {
+        if (competition is null)
+        {
+            return;
+        }
+
+        readResult = await LeaderboardService.GetSnapshotAsync(competition.Id, 1, 50);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        if (isLoadingMore || competition is null || readResult?.Snapshot is not { } current || !current.HasMore)
+        {
+            return;
+        }
+
+        isLoadingMore = true;
+        try
+        {
+            var nextPage = await LeaderboardService.GetSnapshotAsync(
+                competition.Id,
+                current.Page + 1,
+                current.PageSize);
+
+            if (nextPage.Snapshot is { } nextSnapshot)
+            {
+                var merged = nextSnapshot with
+                {
+                    CompetitionId = competition.Id,
+                    Rows = current.Rows.Concat(nextSnapshot.Rows).ToArray()
+                };
+                readResult = LeaderboardReadResult.Available(merged);
+            }
+            else
+            {
+                readResult = nextPage;
+            }
+        }
+        finally
+        {
+            isLoadingMore = false;
+        }
+    }
+
+    public async ValueTask DisposeAsync() => await DisposeRealtimeAsync();
+
+    private async ValueTask DisposeRealtimeAsync()
+    {
+        if (realtimeClient is not null)
+        {
+            realtimeClient.SnapshotReceived -= ReceiveSnapshotAsync;
+            await realtimeClient.DisposeAsync();
+            realtimeClient = null;
+        }
+
+        realtimeStarted = false;
+    }
+}

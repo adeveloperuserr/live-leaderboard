@@ -1,0 +1,110 @@
+@using LiveLeaderboard.Core.Leaderboards
+@using Microsoft.AspNetCore.Components
+
+<section class="leaderboard-card" aria-labelledby="leaderboard-table-heading">
+    <div class="leaderboard-card-header">
+        <div>
+            <p class="eyebrow">Live standings</p>
+            <h2 id="leaderboard-table-heading">Leaderboard</h2>
+        </div>
+        <span class="last-updated">Updated @Snapshot.ProjectedAtUtc.ToLocalTime().ToString("HH:mm:ss")</span>
+    </div>
+
+    @if (Snapshot.Rows.Count == 0)
+    {
+        <div class="empty-state" data-testid="empty-state">
+            <strong>No scores yet</strong>
+            <span>The first score will appear here instantly.</span>
+        </div>
+    }
+    else
+    {
+        <div class="table-scroll-region">
+            <table class="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Rank</th>
+                        <th scope="col">Participant</th>
+                        <th scope="col" class="score-column">Score</th>
+                        <th scope="col" class="movement-column">Move</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Snapshot.Rows)
+                    {
+                        <tr @key="row.ParticipantId" data-participant-id="@row.ParticipantId">
+                            <td class="rank-cell">#@row.Rank</td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(CompetitionSlug))
+                                {
+                                    <a class="participant-link" href="/leaderboards/@CompetitionSlug/participants/@row.ParticipantId">
+                                        <span class="participant-name">@row.DisplayName</span>
+                                        @if (!string.IsNullOrWhiteSpace(row.Handle))
+                                        {
+                                            <span class="participant-handle">@($"@{row.Handle}")</span>
+                                        }
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="participant-name">@row.DisplayName</span>
+                                    @if (!string.IsNullOrWhiteSpace(row.Handle))
+                                    {
+                                        <span class="participant-handle">@($"@{row.Handle}")</span>
+                                    }
+                                }
+                            </td>
+                            <td class="score-cell">@row.Score.ToString("N0")</td>
+                            <td class="movement-cell">
+                                @if (row.RankDelta is > 0)
+                                {
+                                    <span class="movement-up" aria-label="Moved up @row.RankDelta places">↑@row.RankDelta</span>
+                                }
+                                else if (row.RankDelta is < 0)
+                                {
+                                    <span class="movement-down" aria-label="Moved down @Math.Abs(row.RankDelta.Value) places">↓@Math.Abs(row.RankDelta.Value)</span>
+                                }
+                                else if (row.RankDelta is 0)
+                                {
+                                    <span class="movement-flat" aria-label="No rank change">—</span>
+                                }
+                                else
+                                {
+                                    <span class="movement-new">New</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @if (Snapshot.HasMore)
+    {
+        <div class="load-more-row">
+            <button class="btn btn-outline-primary" data-testid="load-more" @onclick="LoadMoreAsync" disabled="@IsLoadingMore">
+                @(IsLoadingMore ? "Loading…" : "Load more")
+            </button>
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public LeaderboardSnapshot Snapshot { get; set; } = default!;
+
+    [Parameter]
+    public string? CompetitionSlug { get; set; }
+
+    [Parameter]
+    public bool IsLive { get; set; }
+
+    [Parameter]
+    public bool IsLoadingMore { get; set; }
+
+    [Parameter]
+    public EventCallback OnLoadMore { get; set; }
+
+    private Task LoadMoreAsync() => OnLoadMore.InvokeAsync();
+}

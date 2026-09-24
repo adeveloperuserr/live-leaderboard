@@ -1,0 +1,100 @@
+@page "/leaderboards/{Slug}/participants/{ParticipantId:guid}"
+@rendermode InteractiveServer
+@using LiveLeaderboard.Data.Leaderboards
+@inject PublicLeaderboardService LeaderboardService
+
+<PageTitle>@(participant?.DisplayName ?? "Participant")</PageTitle>
+
+<div class="participant-page">
+    @if (isLoading)
+    {
+        <section class="page-state" data-testid="participant-loading" aria-live="polite">
+            <span class="loading-pulse"></span>
+            <strong>Loading participant…</strong>
+        </section>
+    }
+    else if (competition is null || participant is null)
+    {
+        <section class="page-state page-state-error" data-testid="participant-not-found">
+            <strong>Participant not found</strong>
+            <span>This participant is not part of a public competition.</span>
+        </section>
+    }
+    else
+    {
+        <a class="back-link" href="/leaderboards/@competition.Slug">← Back to leaderboard</a>
+        <header class="participant-hero">
+            <p class="eyebrow">@competition.Name</p>
+            <h1>@participant.DisplayName</h1>
+            @if (!string.IsNullOrWhiteSpace(participant.Handle))
+            {
+                <p class="participant-handle large-handle">@($"@{participant.Handle}")</p>
+            }
+        </header>
+
+        <section class="participant-stats" aria-label="Participant standing">
+            <div class="stat-card">
+                <span>Current score</span>
+                <strong>@participant.Score.ToString("N0")</strong>
+            </div>
+            <div class="stat-card">
+                <span>Current rank</span>
+                <strong>@(participant.Rank?.ToString() ?? "—")</strong>
+            </div>
+        </section>
+
+        <section class="events-card" data-testid="score-events" aria-labelledby="score-events-heading">
+            <div class="leaderboard-card-header">
+                <div>
+                    <p class="eyebrow">Public history</p>
+                    <h2 id="score-events-heading">Recent score events</h2>
+                </div>
+                <span class="muted-copy">Scorer identity is private</span>
+            </div>
+            @if (participant.RecentEvents.Count == 0)
+            {
+                <p class="muted-copy">No score events have been recorded yet.</p>
+            }
+            else
+            {
+                <div class="event-list">
+                    @foreach (var scoreEvent in participant.RecentEvents)
+                    {
+                        <div class="event-row">
+                            <div>
+                                <strong>+@scoreEvent.Points.ToString("N0")</strong>
+                                <span>@scoreEvent.Reason</span>
+                            </div>
+                            <div class="event-total">
+                                <strong>@scoreEvent.TotalAfterScore.ToString("N0")</strong>
+                                <span>@scoreEvent.CreatedAtUtc.ToLocalTime().ToString("MMM d, HH:mm")</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </section>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Slug { get; set; } = string.Empty;
+
+    [Parameter]
+    public Guid ParticipantId { get; set; }
+
+    private PublicCompetitionView? competition;
+    private PublicParticipantView? participant;
+    private bool isLoading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+        competition = await LeaderboardService.GetPublicCompetitionAsync(Slug);
+        participant = competition is null
+            ? null
+            : await LeaderboardService.GetParticipantAsync(competition, ParticipantId);
+        isLoading = false;
+    }
+}

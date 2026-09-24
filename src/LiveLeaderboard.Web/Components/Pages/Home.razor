@@ -1,7 +1,76 @@
-﻿@page "/"
+@page "/"
+@rendermode InteractiveServer
+@using LiveLeaderboard.Data.Leaderboards
+@inject PublicLeaderboardService LeaderboardService
 
 <PageTitle>Home</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="home-page">
+    <section class="home-hero">
+        <div>
+            <p class="eyebrow">Redis-powered · SignalR-live</p>
+            <h1>Scores move. Everyone sees it.</h1>
+            <p class="hero-description">
+                A real-time competition board backed by SQL Server for durable events,
+                Redis sorted sets for fast ranking, and SignalR for instant updates.
+            </p>
+        </div>
+        <div class="architecture-note">
+            <span class="architecture-number">01</span>
+            <span>One score event becomes a new position for every connected viewer.</span>
+        </div>
+    </section>
 
-Welcome to your new app.
+    <section class="competition-list" aria-labelledby="competition-list-heading">
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow">Public boards</p>
+                <h2 id="competition-list-heading">Choose a competition</h2>
+            </div>
+            <span class="muted-copy">Open to everyone</span>
+        </div>
+
+        @if (competitions is null)
+        {
+            <div class="page-state compact-state" data-testid="competitions-loading">
+                <span class="loading-pulse"></span>
+                <span>Finding public competitions…</span>
+            </div>
+        }
+        else if (competitions.Count == 0)
+        {
+            <div class="empty-state" data-testid="no-competitions">
+                <strong>No public competitions yet</strong>
+                <span>Seed a competition or make one live from the scorer workflow.</span>
+            </div>
+        }
+        else
+        {
+            <div class="competition-grid">
+                @foreach (var competition in competitions)
+                {
+                    <a class="competition-card" href="/leaderboards/@competition.Slug">
+                        <div class="competition-card-topline">
+                            <span class="status-pill @(competition.IsLive ? "live-pill" : "completed-pill")">
+                                @(competition.IsLive ? "LIVE" : "FINAL")
+                            </span>
+                            <span class="competition-arrow">↗</span>
+                        </div>
+                        <h3>@competition.Name</h3>
+                        <p>@(competition.Description ?? "View the public standings and score history.")</p>
+                        <span class="competition-url">/@competition.Slug</span>
+                    </a>
+                }
+            </div>
+        }
+    </section>
+</div>
+
+@code {
+    private IReadOnlyList<PublicCompetitionView>? competitions;
+
+    protected override async Task OnInitializedAsync()
+    {
+        competitions = await LeaderboardService.GetPublicCompetitionsAsync();
+    }
+}
