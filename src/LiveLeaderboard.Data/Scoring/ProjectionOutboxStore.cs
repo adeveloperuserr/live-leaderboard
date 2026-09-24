@@ -32,6 +32,7 @@ public sealed class ProjectionOutboxStore(IServiceScopeFactory scopeFactory) : I
         {
             item.Status = ProjectionStatus.Processing;
             item.Attempts++;
+            item.LastAttemptAtUtc = utcNow;
             item.LeaseUntilUtc = utcNow.Add(lease);
         }
 

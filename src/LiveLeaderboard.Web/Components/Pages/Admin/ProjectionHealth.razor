@@ -1,0 +1,64 @@
+@page "/admin/projection-health"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = LeaderboardPolicies.AdminRole)]
+@using LiveLeaderboard.Data.Administration
+@using LiveLeaderboard.Web.Authorization
+@inject AdminLeaderboardService AdminService
+
+<PageTitle>Projection health</PageTitle>
+
+<div class="private-page">
+    <header class="private-page-header"><div><p class="eyebrow">Admin workspace</p><h1>Projection health</h1><p class="private-description">SQL is durable; Redis is the replaceable read projection. Rebuild a competition when its sorted set is missing or stale.</p></div><a class="btn btn-outline-primary" href="/admin/competitions">← Competitions</a></header>
+    @if (!string.IsNullOrWhiteSpace(message)) { <div class="success-panel" role="status">@message</div> }
+    @if (!string.IsNullOrWhiteSpace(error)) { <div class="form-error" role="alert">@error</div> }
+    @if (health is null)
+    {
+        <div class="page-state compact-state"><span class="loading-pulse"></span><span>Checking Redis and outbox state…</span></div>
+    }
+    else if (health.Count == 0)
+    {
+        <div class="empty-state">No competitions to inspect.</div>
+    }
+    else
+    {
+        <div class="health-grid">
+            @foreach (var item in health)
+            {
+                <section class="health-card">
+                    <div class="health-card-header"><div><p class="eyebrow">@item.CompetitionStatus</p><h2>@item.CompetitionName</h2></div><span class="status-pill @(item.RedisAvailable ? "live-pill" : "completed-pill")">@(item.RedisAvailable ? "REDIS READY" : "REDIS MISSING")</span></div>
+                    <div class="health-metrics"><div><span>Pending</span><strong>@item.PendingCount</strong></div><div><span>Processing</span><strong>@item.ProcessingCount</strong></div><div><span>Failed</span><strong>@item.FailedCount</strong></div></div>
+                    <p class="muted-copy">Last attempt: @(item.LastAttemptAtUtc?.ToLocalTime().ToString("MMM d, HH:mm:ss") ?? "Never")</p>
+                    @if (!string.IsNullOrWhiteSpace(item.LastError)) { <p class="health-error">@item.LastError</p> }
+                    @if (pendingConfirmation == item.CompetitionId)
+                    {
+                        <button class="btn btn-primary" @onclick="() => RebuildAsync(item.CompetitionId)">Click again to confirm rebuild</button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-outline-primary" @onclick="() => RequestRebuild(item.CompetitionId)">Rebuild Redis projection</button>
+                    }
+                </section>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private IReadOnlyList<ProjectionHealthView>? health;
+    private Guid? pendingConfirmation;
+    private string? message;
+    private string? error;
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync() => health = await AdminService.GetProjectionHealthAsync();
+
+    private void RequestRebuild(Guid competitionId) { pendingConfirmation = competitionId; message = "Rebuild is a destructive projection replacement. Click again to confirm."; }
+
+    private async Task RebuildAsync(Guid competitionId)
+    {
+        pendingConfirmation = null; message = null; error = null;
+        try { await AdminService.RebuildProjectionAsync(competitionId); message = "Projection rebuilt atomically from SQL totals."; await ReloadAsync(); }
+        catch (Exception exception) { error = exception.Message; }
+    }
+}

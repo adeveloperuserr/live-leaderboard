@@ -6,6 +6,7 @@ using LiveLeaderboard.Core.Abstractions;
 using LiveLeaderboard.Data.Redis;
 using LiveLeaderboard.Data.Scoring;
 using LiveLeaderboard.Data.Leaderboards;
+using LiveLeaderboard.Data.Administration;
 using LiveLeaderboard.Web.Realtime;
 using LiveLeaderboard.Web.Workers;
 using LiveLeaderboard.Web.Components;
@@ -59,6 +60,8 @@ builder.Services.AddScoped<ILeaderboardReader>(services => services.GetRequiredS
 builder.Services.AddScoped<ILeaderboardProjector>(services => services.GetRequiredService<RedisProjectionRebuilder>());
 builder.Services.AddScoped<PublicLeaderboardService>();
 builder.Services.AddScoped<ICompetitionCatalog>(services => services.GetRequiredService<PublicLeaderboardService>());
+builder.Services.AddScoped<IScoreSubmissionService, ScoreSubmissionService>();
+builder.Services.AddScoped<AdminLeaderboardService>();
 builder.Services.AddSingleton<IProjectionWorkStore, ProjectionOutboxStore>();
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<LeaderboardNotifier>();

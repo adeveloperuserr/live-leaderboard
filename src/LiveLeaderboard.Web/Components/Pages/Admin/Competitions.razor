@@ -1,0 +1,144 @@
+@page "/admin/competitions"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = LeaderboardPolicies.AdminRole)]
+@using LiveLeaderboard.Core.Competitions
+@using LiveLeaderboard.Data.Administration
+@using LiveLeaderboard.Web.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@inject AdminLeaderboardService AdminService
+
+<PageTitle>Manage competitions</PageTitle>
+
+<div class="private-page">
+    <header class="private-page-header">
+        <div>
+            <p class="eyebrow">Admin workspace</p>
+            <h1>Competitions</h1>
+            <p class="private-description">Create a board, move it to Live, and make it public without exposing private scorer data.</p>
+        </div>
+        <a class="btn btn-outline-primary" href="/admin/projection-health">Projection health →</a>
+    </header>
+
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <div class="success-panel" role="status">@message</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(error))
+    {
+        <div class="form-error" role="alert">@error</div>
+    }
+
+    <section class="workflow-card">
+        <div class="section-heading">
+            <div><p class="eyebrow">New board</p><h2>Create competition</h2></div>
+        </div>
+        <EditForm Model="newCompetition" OnValidSubmit="CreateAsync" class="admin-form">
+            <div class="form-grid">
+                <div class="form-field"><label for="slug">Public slug</label><InputText id="slug" @bind-Value="newCompetition.Slug" class="form-control" placeholder="opening-night" /></div>
+                <div class="form-field"><label for="name">Name</label><InputText id="name" @bind-Value="newCompetition.Name" class="form-control" placeholder="Opening Night Challenge" /></div>
+                <div class="form-field form-field-wide"><label for="description">Description</label><InputTextArea id="description" @bind-Value="newCompetition.Description" class="form-control" rows="2" /></div>
+                <div class="form-field"><label for="status">Initial status</label><InputSelect id="status" @bind-Value="newCompetition.Status" class="form-select"><option value="@CompetitionStatus.Draft">Draft</option><option value="@CompetitionStatus.Live">Live</option></InputSelect></div>
+            </div>
+            <button class="btn btn-primary" type="submit">Create competition</button>
+        </EditForm>
+    </section>
+
+    <section class="admin-list" aria-labelledby="competitions-heading">
+        <div class="section-heading"><div><p class="eyebrow">All boards</p><h2 id="competitions-heading">Competition catalogue</h2></div></div>
+        @if (competitions is null)
+        {
+            <div class="page-state compact-state"><span class="loading-pulse"></span><span>Loading competitions…</span></div>
+        }
+        else if (competitions.Count == 0)
+        {
+            <div class="empty-state">No competitions yet.</div>
+        }
+        else
+        {
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead><tr><th>Name</th><th>Slug</th><th>Status</th><th>Participants</th><th>Actions</th></tr></thead>
+                    <tbody>
+                        @foreach (var competition in competitions)
+                        {
+                            <tr>
+                                <td><strong>@competition.Name</strong><small>@competition.Description</small></td>
+                                <td><code>/@competition.Slug</code></td>
+                                <td><span class="status-pill @(competition.Status == CompetitionStatus.Live ? "live-pill" : "completed-pill")">@competition.Status</span></td>
+                                <td>@competition.ParticipantCount</td>
+                                <td class="admin-actions">
+                                    @if (competition.Status == CompetitionStatus.Draft)
+                                    {
+                                        <button class="btn btn-sm btn-primary" @onclick="() => SetStatusAsync(competition.Id, CompetitionStatus.Live)">Make live</button>
+                                    }
+                                    else if (competition.Status == CompetitionStatus.Live)
+                                    {
+                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => SetStatusAsync(competition.Id, CompetitionStatus.Completed)">Complete</button>
+                                        <a class="btn btn-sm btn-outline-primary" href="/leaderboards/@competition.Slug">View board</a>
+                                    }
+                                    else
+                                    {
+                                        <a class="btn btn-sm btn-outline-primary" href="/leaderboards/@competition.Slug">View final</a>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>
+
+@code {
+    private IReadOnlyList<AdminCompetitionView>? competitions;
+    private readonly NewCompetitionInput newCompetition = new();
+    private string? message;
+    private string? error;
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync() => competitions = await AdminService.GetCompetitionsAsync();
+
+    private async Task CreateAsync()
+    {
+        message = null;
+        error = null;
+        try
+        {
+            await AdminService.CreateCompetitionAsync(newCompetition.Slug, newCompetition.Name, newCompetition.Description, newCompetition.Status);
+            message = "Competition created.";
+            newCompetition.Reset();
+            await ReloadAsync();
+        }
+        catch (Exception exception)
+        {
+            error = exception.Message;
+        }
+    }
+
+    private async Task SetStatusAsync(Guid id, CompetitionStatus status)
+    {
+        message = null;
+        error = null;
+        try
+        {
+            await AdminService.SetCompetitionStatusAsync(id, status);
+            message = $"Competition moved to {status}.";
+            await ReloadAsync();
+        }
+        catch (Exception exception)
+        {
+            error = exception.Message;
+        }
+    }
+
+    private sealed class NewCompetitionInput
+    {
+        public string Slug { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public CompetitionStatus Status { get; set; } = CompetitionStatus.Draft;
+        public void Reset() { Slug = string.Empty; Name = string.Empty; Description = null; Status = CompetitionStatus.Draft; }
+    }
+}

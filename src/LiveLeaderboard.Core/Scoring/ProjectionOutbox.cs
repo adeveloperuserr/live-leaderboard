@@ -11,6 +11,7 @@ public sealed class ProjectionOutbox
     public int Attempts { get; set; }
     public DateTime AvailableAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime? LeaseUntilUtc { get; set; }
+    public DateTime? LastAttemptAtUtc { get; set; }
     public string? LastError { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime? PublishedAtUtc { get; set; }

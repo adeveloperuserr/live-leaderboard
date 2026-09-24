@@ -1,0 +1,148 @@
+@page "/scoring"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = LeaderboardPolicies.ScorerOrAdminRoles)]
+@using System.Security.Claims
+@using LiveLeaderboard.Core.Abstractions
+@using LiveLeaderboard.Core.Competitions
+@using DomainParticipant = LiveLeaderboard.Core.Competitions.Participant
+@using LiveLeaderboard.Web.Authorization
+@using LiveLeaderboard.Web.Components.Shared
+@using LiveLeaderboard.Data.Data
+@inject ApplicationDbContext Db
+@inject IScoreSubmissionService ScoreSubmissionService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Score entry</PageTitle>
+
+<div class="private-page">
+    <header class="private-page-header">
+        <div>
+            <p class="eyebrow">Scorer workspace</p>
+            <h1>Record a score</h1>
+            <p class="hero-description private-description">Every submission is durable, idempotent, and projected to Redis for live viewers.</p>
+        </div>
+        <span class="status-pill live-pill">AUTHENTICATED</span>
+    </header>
+
+    @if (isLoading)
+    {
+        <div class="page-state compact-state"><span class="loading-pulse"></span><span>Loading live competitions…</span></div>
+    }
+    else if (competitions.Count == 0)
+    {
+        <div class="page-state page-state-error"><strong>No live competitions</strong><span>An admin must move a competition to Live before scores can be recorded.</span></div>
+    }
+    else
+    {
+        <section class="workflow-card">
+            <div class="form-field">
+                <label for="competition">Competition</label>
+                <select id="competition" class="form-select" value="@selectedCompetitionId" @onchange="CompetitionChangedAsync">
+                    @foreach (var competition in competitions)
+                    {
+                        <option value="@competition.Id">@competition.Name</option>
+                    }
+                </select>
+            </div>
+
+            @if (selectedCompetitionId != Guid.Empty)
+            {
+                <ScoreEntryForm @key="selectedCompetitionId"
+                                Participants="participants"
+                                IsSubmitting="isSubmitting"
+                                ErrorMessage="formError"
+                                OnSubmit="SubmitAsync" />
+            }
+
+            @if (!string.IsNullOrWhiteSpace(successMessage))
+            {
+                <div class="success-panel" role="status">
+                    <strong>@successMessage</strong>
+                    <span>The outbox worker will publish the updated absolute total to Redis.</span>
+                </div>
+            }
+        </section>
+    }
+</div>
+
+@code {
+    private IReadOnlyList<Competition> competitions = [];
+    private IReadOnlyList<DomainParticipant> participants = [];
+    private Guid selectedCompetitionId;
+    private bool isLoading = true;
+    private bool isSubmitting;
+    private string? formError;
+    private string? successMessage;
+    private string userId = "unknown-user";
+
+    protected override async Task OnInitializedAsync()
+    {
+        competitions = await Db.Competitions
+            .Include(competition => competition.Participants)
+            .Where(competition => competition.Status == CompetitionStatus.Live)
+            .OrderBy(competition => competition.Name)
+            .ToListAsync();
+
+        var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        userId = authenticationState.User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? authenticationState.User.Identity?.Name
+            ?? userId;
+
+        if (competitions.Count > 0)
+        {
+            selectedCompetitionId = competitions[0].Id;
+            participants = competitions[0].Participants.ToList();
+        }
+
+        isLoading = false;
+    }
+
+    private async Task CompetitionChangedAsync(ChangeEventArgs args)
+    {
+        if (!Guid.TryParse(args.Value?.ToString(), out var competitionId))
+        {
+            return;
+        }
+
+        selectedCompetitionId = competitionId;
+        participants = await Db.Participants
+            .AsNoTracking()
+            .Where(participant => participant.CompetitionId == selectedCompetitionId && participant.IsActive)
+            .OrderBy(participant => participant.SortOrder)
+            .ThenBy(participant => participant.DisplayName)
+            .ToListAsync();
+        formError = null;
+        successMessage = null;
+    }
+
+    private async Task SubmitAsync(ScoreEntryForm.ScoreEntryInput input)
+    {
+        isSubmitting = true;
+        formError = null;
+        successMessage = null;
+        try
+        {
+            var result = await ScoreSubmissionService.SubmitScoreAsync(
+                selectedCompetitionId,
+                input.ParticipantId,
+                input.Points,
+                input.Reason,
+                Guid.NewGuid().ToString("N"),
+                userId);
+
+            if (!result.Succeeded)
+            {
+                formError = result.ErrorMessage;
+                return;
+            }
+
+            successMessage = result.WasReplayed
+                ? $"This submission was already recorded. New total: {result.NewTotalScore:N0}."
+                : $"Score recorded. New total: {result.NewTotalScore:N0}. Event {result.ScoreEventId:N}.";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

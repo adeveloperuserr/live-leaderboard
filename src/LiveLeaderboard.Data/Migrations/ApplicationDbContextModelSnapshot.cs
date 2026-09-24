@@ -133,6 +133,9 @@ namespace LiveLeaderboard.Data.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("LastAttemptAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("LastError")
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");

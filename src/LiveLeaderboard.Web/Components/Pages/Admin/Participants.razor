@@ -1,0 +1,94 @@
+@page "/admin/participants"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = LeaderboardPolicies.AdminRole)]
+@using LiveLeaderboard.Data.Administration
+@using LiveLeaderboard.Web.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@inject AdminLeaderboardService AdminService
+
+<PageTitle>Manage participants</PageTitle>
+
+<div class="private-page">
+    <header class="private-page-header"><div><p class="eyebrow">Admin workspace</p><h1>Participants</h1><p class="private-description">Add, reorder, and deactivate participants. History is never deleted.</p></div><a class="btn btn-outline-primary" href="/admin/competitions">← Competitions</a></header>
+
+    @if (!string.IsNullOrWhiteSpace(message)) { <div class="success-panel" role="status">@message</div> }
+    @if (!string.IsNullOrWhiteSpace(error)) { <div class="form-error" role="alert">@error</div> }
+
+    @if (competitions is null)
+    {
+        <div class="page-state compact-state"><span class="loading-pulse"></span><span>Loading competitions…</span></div>
+    }
+    else if (competitions.Count == 0)
+    {
+        <div class="empty-state">Create a competition first.</div>
+    }
+    else
+    {
+        <section class="workflow-card">
+            <div class="form-field"><label for="participant-competition">Competition</label><select id="participant-competition" class="form-select" value="@selectedCompetitionId" @onchange="CompetitionChangedAsync">@foreach (var competition in competitions) { <option value="@competition.Id">@competition.Name</option> }</select></div>
+            <EditForm Model="newParticipant" OnValidSubmit="AddAsync" class="admin-form">
+                <div class="form-grid">
+                    <div class="form-field"><label for="display-name">Display name</label><InputText id="display-name" @bind-Value="newParticipant.DisplayName" class="form-control" /></div>
+                    <div class="form-field"><label for="handle">Handle</label><InputText id="handle" @bind-Value="newParticipant.Handle" class="form-control" placeholder="optional" /></div>
+                    <div class="form-field"><label for="sort-order">Sort order</label><InputNumber id="sort-order" @bind-Value="newParticipant.SortOrder" class="form-control" /></div>
+                </div>
+                <button class="btn btn-primary" type="submit">Add participant</button>
+            </EditForm>
+        </section>
+
+        <section class="admin-list"><div class="section-heading"><div><p class="eyebrow">Roster</p><h2>@SelectedCompetitionName</h2></div></div>
+            <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Participant</th><th>Score</th><th>Order</th><th>State</th><th>History</th><th>Actions</th></tr></thead><tbody>
+                @foreach (var participant in participants)
+                {
+                    <tr class="@(participant.IsActive ? string.Empty : "row-muted")"><td><strong>@participant.DisplayName</strong><small>@(string.IsNullOrWhiteSpace(participant.Handle) ? "" : $"@{participant.Handle}")</small></td><td>@participant.TotalScore.ToString("N0")</td><td>@participant.SortOrder</td><td>@(participant.IsActive ? "Active" : "Inactive")</td><td>@(participant.HasScoreHistory ? "Preserved" : "None")</td><td>@if (participant.IsActive) { <button class="btn btn-sm btn-outline-primary" @onclick="() => DeactivateAsync(participant.Id)">Deactivate</button> }</td></tr>
+                }
+            </tbody></table></div>
+        </section>
+    }
+</div>
+
+@code {
+    private IReadOnlyList<AdminCompetitionView>? competitions;
+    private IReadOnlyList<AdminParticipantView> participants = [];
+    private Guid selectedCompetitionId;
+    private readonly NewParticipantInput newParticipant = new();
+    private string? message;
+    private string? error;
+
+    private string SelectedCompetitionName => competitions?.FirstOrDefault(item => item.Id == selectedCompetitionId)?.Name ?? "Participants";
+
+    protected override async Task OnInitializedAsync()
+    {
+        competitions = await AdminService.GetCompetitionsAsync();
+        if (competitions.Count > 0) { selectedCompetitionId = competitions[0].Id; await ReloadParticipantsAsync(); }
+    }
+
+    private async Task CompetitionChangedAsync(ChangeEventArgs args)
+    {
+        if (Guid.TryParse(args.Value?.ToString(), out var id)) { selectedCompetitionId = id; await ReloadParticipantsAsync(); }
+    }
+
+    private async Task ReloadParticipantsAsync() => participants = await AdminService.GetParticipantsAsync(selectedCompetitionId);
+
+    private async Task AddAsync()
+    {
+        message = null; error = null;
+        try { await AdminService.AddParticipantAsync(selectedCompetitionId, newParticipant.DisplayName, newParticipant.Handle, newParticipant.SortOrder); newParticipant.Reset(); message = "Participant added."; await ReloadParticipantsAsync(); }
+        catch (Exception exception) { error = exception.Message; }
+    }
+
+    private async Task DeactivateAsync(Guid participantId)
+    {
+        message = null; error = null;
+        try { await AdminService.DeactivateParticipantAsync(participantId); message = "Participant deactivated and removed from the public projection."; await ReloadParticipantsAsync(); }
+        catch (Exception exception) { error = exception.Message; }
+    }
+
+    private sealed class NewParticipantInput
+    {
+        public string DisplayName { get; set; } = string.Empty;
+        public string? Handle { get; set; }
+        public int SortOrder { get; set; }
+        public void Reset() { DisplayName = string.Empty; Handle = null; SortOrder = 0; }
+    }
+}

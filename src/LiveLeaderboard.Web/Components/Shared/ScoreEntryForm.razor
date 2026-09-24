@@ -1,0 +1,62 @@
+@using LiveLeaderboard.Core.Competitions
+@using Microsoft.AspNetCore.Components.Forms
+
+<EditForm Model="model" OnValidSubmit="SubmitAsync" class="score-entry-form">
+    <div class="form-grid">
+        <div class="form-field form-field-wide">
+            <label for="participant">Participant</label>
+            <InputSelect id="participant" name="participant" @bind-Value="model.ParticipantId" class="form-select">
+                <option value="@Guid.Empty">Choose a participant</option>
+                @foreach (var participant in Participants.Where(participant => participant.IsActive))
+                {
+                    <option value="@participant.Id">@participant.DisplayName@(string.IsNullOrWhiteSpace(participant.Handle) ? string.Empty : $" · @{participant.Handle}")</option>
+                }
+            </InputSelect>
+        </div>
+
+        <div class="form-field">
+            <label for="points">Points adjustment</label>
+            <InputNumber id="points" name="points" @bind-Value="model.Points" class="form-control" step="1" />
+            <span class="form-help">Use a negative number to correct a score.</span>
+        </div>
+
+        <div class="form-field form-field-wide">
+            <label for="reason">Reason</label>
+            <InputTextArea id="reason" name="reason" @bind-Value="model.Reason" class="form-control" rows="3" maxlength="500" placeholder="What happened?" />
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <div class="form-error" role="alert">@ErrorMessage</div>
+    }
+
+    <button type="submit" class="btn btn-primary" disabled="@IsSubmitting">
+        @(IsSubmitting ? "Recording…" : "Record score")
+    </button>
+</EditForm>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<Participant> Participants { get; set; } = [];
+
+    [Parameter]
+    public bool IsSubmitting { get; set; }
+
+    [Parameter]
+    public string? ErrorMessage { get; set; }
+
+    [Parameter]
+    public EventCallback<ScoreEntryInput> OnSubmit { get; set; }
+
+    private ScoreEntryInput model = new();
+
+    private async Task SubmitAsync() => await OnSubmit.InvokeAsync(model);
+
+    public sealed class ScoreEntryInput
+    {
+        public Guid ParticipantId { get; set; }
+        public int Points { get; set; }
+        public string Reason { get; set; } = string.Empty;
+    }
+}
