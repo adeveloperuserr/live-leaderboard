@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Identity;
-using LiveLeaderboard.Web.Data;
+using LiveLeaderboard.Data.Data;
 
 namespace LiveLeaderboard.Web.Components.Account;
 

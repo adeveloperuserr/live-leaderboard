@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using LiveLeaderboard.Web.Components.Account.Pages;
 using LiveLeaderboard.Web.Components.Account.Pages.Manage;
-using LiveLeaderboard.Web.Data;
+using LiveLeaderboard.Data.Data;
 
 namespace Microsoft.AspNetCore.Routing;
 
