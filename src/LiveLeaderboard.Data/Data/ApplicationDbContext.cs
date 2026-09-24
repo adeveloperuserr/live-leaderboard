@@ -1,5 +1,6 @@
 using LiveLeaderboard.Core.Competitions;
 using LiveLeaderboard.Core.Scoring;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,6 +9,8 @@ namespace LiveLeaderboard.Data.Data;
 public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
     : IdentityDbContext<ApplicationUser>(options)
 {
+    protected override Version SchemaVersion => IdentitySchemaVersions.Version3;
+
     public DbSet<Competition> Competitions => Set<Competition>();
     public DbSet<Participant> Participants => Set<Participant>();
     public DbSet<ScoreEvent> ScoreEvents => Set<ScoreEvent>();

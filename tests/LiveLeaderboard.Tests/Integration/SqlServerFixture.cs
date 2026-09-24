@@ -1,5 +1,6 @@
 using LiveLeaderboard.Data.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace LiveLeaderboard.Tests.Integration;
 
@@ -13,6 +14,10 @@ public sealed class SqlServerFixture : IAsyncLifetime
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseSqlServer(ConnectionString)
+            // The web host registers IdentityCore's StoreOptions before building the context.
+            // The fixture creates the context directly, so suppress only this test-harness
+            // warning while the migration suite validates the committed schema itself.
+            .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning))
             .Options;
 
         return new ApplicationDbContext(options);

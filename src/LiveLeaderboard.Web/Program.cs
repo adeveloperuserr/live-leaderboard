@@ -97,3 +97,7 @@ app.MapAdditionalIdentityEndpoints();
 app.MapHub<LeaderboardHub>("/hubs/leaderboard");
 
 app.Run();
+
+public partial class Program
+{
+}
