@@ -52,6 +52,6 @@ public sealed class RedisLeaderboardReader(ApplicationDbContext db, RedisLeaderb
             .Take(pageSize)
             .ToArray();
 
-        return LeaderboardReadResult.Available(completeSnapshot with { Rows = pageRows });
+        return LeaderboardReadResult.Available(completeSnapshot with { CompetitionId = competitionId, Rows = pageRows });
     }
 }

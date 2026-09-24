@@ -6,7 +6,10 @@ public sealed record LeaderboardSnapshot(
     int PageSize,
     int TotalCount,
     bool HasMore,
-    DateTime ProjectedAtUtc);
+    DateTime ProjectedAtUtc)
+{
+    public Guid CompetitionId { get; init; }
+}
 
 public static class LeaderboardSnapshotMapper
 {

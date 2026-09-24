@@ -5,6 +5,8 @@ using StackExchange.Redis;
 using LiveLeaderboard.Core.Abstractions;
 using LiveLeaderboard.Data.Redis;
 using LiveLeaderboard.Data.Scoring;
+using LiveLeaderboard.Web.Realtime;
+using LiveLeaderboard.Web.Workers;
 using LiveLeaderboard.Web.Components;
 using LiveLeaderboard.Web.Components.Account;
 using LiveLeaderboard.Data.Data;
@@ -55,6 +57,10 @@ builder.Services.AddScoped<RedisProjectionRebuilder>();
 builder.Services.AddScoped<ILeaderboardReader>(services => services.GetRequiredService<RedisLeaderboardReader>());
 builder.Services.AddScoped<ILeaderboardProjector>(services => services.GetRequiredService<RedisProjectionRebuilder>());
 builder.Services.AddSingleton<IProjectionWorkStore, ProjectionOutboxStore>();
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<LeaderboardNotifier>();
+builder.Services.AddSingleton<IProjectionNotifier>(services => services.GetRequiredService<LeaderboardNotifier>());
+builder.Services.AddHostedService<LeaderboardProjectionWorker>();
 
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 
@@ -82,5 +88,6 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.MapAdditionalIdentityEndpoints();
+app.MapHub<LeaderboardHub>("/hubs/leaderboard");
 
 app.Run();
