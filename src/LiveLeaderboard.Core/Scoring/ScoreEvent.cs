@@ -8,6 +8,7 @@ public sealed class ScoreEvent
     public Guid CompetitionId { get; set; }
     public Guid ParticipantId { get; set; }
     public int Points { get; set; }
+    public int TotalAfterScore { get; set; }
     public string Reason { get; set; } = string.Empty;
     public string IdempotencyKey { get; set; } = string.Empty;
     public string SubmittedByUserId { get; set; } = string.Empty;

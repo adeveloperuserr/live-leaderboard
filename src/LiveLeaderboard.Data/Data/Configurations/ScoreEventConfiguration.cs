@@ -12,6 +12,7 @@ public sealed class ScoreEventConfiguration : IEntityTypeConfiguration<ScoreEven
         builder.Property(scoreEvent => scoreEvent.Reason).HasMaxLength(500).IsRequired();
         builder.Property(scoreEvent => scoreEvent.IdempotencyKey).HasMaxLength(160).IsRequired();
         builder.Property(scoreEvent => scoreEvent.SubmittedByUserId).HasMaxLength(450).IsRequired();
+        builder.Property(scoreEvent => scoreEvent.TotalAfterScore).IsRequired();
         builder.HasIndex(scoreEvent => new { scoreEvent.CompetitionId, scoreEvent.IdempotencyKey }).IsUnique();
         builder.HasIndex(scoreEvent => new { scoreEvent.CompetitionId, scoreEvent.CreatedAtUtc });
 
