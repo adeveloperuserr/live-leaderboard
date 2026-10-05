@@ -1,8 +1,8 @@
 @if (!IsAvailable)
 {
     <div class="projection-status projection-unavailable" data-testid="projection-unavailable" role="status">
-        <strong>Leaderboard is catching up</strong>
-        <span>@(ErrorMessage ?? "The live projection is not available yet. Please try again shortly.")</span>
+        <strong>Standings are catching up</strong>
+        <span>The latest results will appear here shortly. Please try again in a moment.</span>
     </div>
 }
 else
@@ -31,6 +31,4 @@ else
     [Parameter]
     public DateTime ProjectedAtUtc { get; set; }
 
-    [Parameter]
-    public string? ErrorMessage { get; set; }
 }

@@ -14,14 +14,14 @@
 
 <PageTitle>Score entry</PageTitle>
 
-<div class="private-page">
+<div class="private-page scorer-page" data-testid="scorer-page">
     <header class="private-page-header">
         <div>
-            <p class="eyebrow">Scorer workspace</p>
-            <h1>Record a score</h1>
-            <p class="hero-description private-description">Every submission is durable, idempotent, and projected to Redis for live viewers.</p>
+            <div class="hero-kicker"><span class="signal-orb"></span> Operator console</div>
+            <h1>Put points on the board.</h1>
+            <p class="private-description">Record a verified result and the public ranking will update for everyone watching.</p>
         </div>
-        <span class="status-pill live-pill">AUTHENTICATED</span>
+        <div class="operator-status"><span class="live-dot"></span><span>Authenticated scorer</span></div>
     </header>
 
     @if (isLoading)
@@ -35,6 +35,12 @@
     else
     {
         <section class="workflow-card">
+            <div class="workflow-heading">
+                <div>
+                    <h2>Score entry</h2>
+                </div>
+                <span>One event. One durable total.</span>
+            </div>
             <div class="form-field">
                 <label for="competition">Competition</label>
                 <select id="competition" class="form-select" value="@selectedCompetitionId" @onchange="CompetitionChangedAsync">
@@ -50,7 +56,7 @@
                 <ScoreEntryForm @key="selectedCompetitionId"
                                 Participants="participants"
                                 IsSubmitting="isSubmitting"
-                                ErrorMessage="formError"
+                                ErrorMessage="@formError"
                                 OnSubmit="SubmitAsync" />
             }
 
@@ -58,7 +64,7 @@
             {
                 <div class="success-panel" role="status">
                     <strong>@successMessage</strong>
-                    <span>The outbox worker will publish the updated absolute total to Redis.</span>
+                    <span>The public ranking has been updated.</span>
                 </div>
             }
         </section>
@@ -138,7 +144,7 @@
 
             successMessage = result.WasReplayed
                 ? $"This submission was already recorded. New total: {result.NewTotalScore:N0}."
-                : $"Score recorded. New total: {result.NewTotalScore:N0}. Event {result.ScoreEventId:N}.";
+                : $"Score recorded. New total: {result.NewTotalScore:N0}.";
         }
         finally
         {

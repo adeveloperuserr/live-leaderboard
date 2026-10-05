@@ -10,13 +10,13 @@
 
 <PageTitle>@(competition?.Name ?? "Leaderboard")</PageTitle>
 
-<div class="leaderboard-page">
+<div class="leaderboard-page live-competition-page" data-testid="live-leaderboard">
     @if (isLoading)
     {
         <section class="page-state" data-testid="leaderboard-loading" aria-live="polite">
             <span class="loading-pulse"></span>
             <strong>Loading leaderboard…</strong>
-            <span>Connecting to the live projection.</span>
+            <span>Getting the latest standings.</span>
         </section>
     }
     else if (competition is null)
@@ -29,26 +29,35 @@
     else
     {
         <header class="leaderboard-hero">
-            <div>
-                <a class="back-link" href="/">← All competitions</a>
-                <p class="eyebrow">Public competition</p>
+            <div class="leaderboard-hero-main">
+                <a class="back-link" href="/"><span>←</span> Public boards</a>
+                <div class="hero-kicker"><span class="signal-orb"></span> @(competition.IsLive ? "Live competition" : "Completed competition")</div>
                 <h1>@competition.Name</h1>
                 @if (!string.IsNullOrWhiteSpace(competition.Description))
                 {
                     <p class="hero-description">@competition.Description</p>
                 }
             </div>
-            <div class="hero-meta">
-                <span class="competition-slug">/@competition.Slug</span>
-                <span>@(competition.IsLive ? "Scores are arriving now" : "Final standings")</span>
+            <div class="hero-side-panel">
+                <span class="side-panel-label">Live standings</span>
+                <strong>@(competition.IsLive ? "Updated instantly" : "Final results")</strong>
+                <span>@(competition.IsLive ? "Follow every score as the order changes." : "See how the competition finished.")</span>
             </div>
         </header>
+
+        @if (competition.IsLive && readResult?.IsAvailable == true)
+        {
+            <div class="live-activity-banner" role="status">
+                <span class="activity-pulse"></span>
+                <span><strong>Live updates</strong> Every score can change the order for everyone watching.</span>
+                <span class="activity-tail">Connected</span>
+            </div>
+        }
 
         <ProjectionStatus
             IsAvailable="readResult?.IsAvailable == true"
             IsLive="competition.IsLive"
-            ProjectedAtUtc="readResult?.Snapshot?.ProjectedAtUtc ?? DateTime.UtcNow"
-            ErrorMessage="readResult?.ErrorMessage" />
+            ProjectedAtUtc="readResult?.Snapshot?.ProjectedAtUtc ?? DateTime.UtcNow" />
 
         @if (readResult?.Snapshot is { } snapshot)
         {

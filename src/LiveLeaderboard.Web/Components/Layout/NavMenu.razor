@@ -2,9 +2,11 @@
 @using LiveLeaderboard.Web.Authorization
 @inject NavigationManager NavigationManager
 
-<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">LiveLeaderboard.Web</a>
+<div class="nav-brand">
+    <a class="brand-mark" href="/" aria-label="Liveboard home">L<span>/</span></a>
+    <div class="brand-lockup">
+        <span class="brand-name">Liveboard</span>
+        <span class="brand-subtitle">Competition control room</span>
     </div>
 </div>
 
@@ -12,6 +14,7 @@
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="nav flex-column">
+        <div class="nav-section-label">Explore</div>
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
                 <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
@@ -19,7 +22,7 @@
         </div>
 
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="leaderboards/opening-night">
+            <NavLink class="nav-link" href="/">
                 <span class="bi bi-trophy-fill-nav-menu" aria-hidden="true"></span> Live Leaderboards
             </NavLink>
         </div>
@@ -44,32 +47,15 @@
             </Authorized>
         </AuthorizeView>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="auth">
-                <span class="bi bi-lock-nav-menu" aria-hidden="true"></span> Auth Required
-            </NavLink>
-        </div>
-
+        <div class="nav-section-label nav-section-label-lower">Workspace</div>
         <AuthorizeView>
             <Authorized>
-                <div class="nav-item px-3">
+                <div class="nav-item nav-identity px-3">
                     <NavLink class="nav-link" href="Account/Manage">
                         <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> @context.User.Identity?.Name
                     </NavLink>
                 </div>
-                <div class="nav-item px-3">
+                <div class="nav-item nav-logout px-3">
                     <form action="Account/Logout" method="post">
                         <AntiforgeryToken />
                         <input type="hidden" name="ReturnUrl" value="@currentUrl" />

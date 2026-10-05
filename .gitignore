@@ -17,6 +17,9 @@ appsettings.Local.json
 secrets.json
 .env
 
+## Local Redis data
+dump.rdb
+
 ## Test and browser artifacts
 TestResults/
 playwright-report/

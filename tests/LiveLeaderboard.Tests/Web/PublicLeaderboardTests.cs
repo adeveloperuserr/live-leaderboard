@@ -69,15 +69,18 @@ public sealed class PublicLeaderboardTests : BunitContext
     }
 
     [Fact]
-    public void Projection_status_shows_unavailable_state_without_hiding_the_reason()
+    public void Projection_status_uses_participant_facing_language_when_standings_are_unavailable()
     {
         var cut = Render<ProjectionStatus>(parameters => parameters
             .Add(component => component.IsAvailable, false)
-            .Add(component => component.IsLive, true)
-            .Add(component => component.ErrorMessage, "Redis projection is warming up."));
+            .Add(component => component.IsLive, true));
 
         cut.Find("[data-testid='projection-unavailable']").TextContent
-            .Should().Contain("Redis projection is warming up.");
+            .Should().Contain("Standings are catching up");
+        var publicStatusText = cut.Find("[data-testid='projection-unavailable']").TextContent;
+        publicStatusText.Should().NotContain("Redis");
+        publicStatusText.Should().NotContain("SignalR");
+        publicStatusText.Should().NotContain("projection");
     }
 
     [Fact]

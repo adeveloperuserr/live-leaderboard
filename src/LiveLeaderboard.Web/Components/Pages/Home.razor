@@ -5,19 +5,24 @@
 
 <PageTitle>Home</PageTitle>
 
-<div class="home-page">
+<div class="home-page competition-index" data-testid="competition-index">
     <section class="home-hero">
-        <div>
-            <p class="eyebrow">Redis-powered · SignalR-live</p>
-            <h1>Scores move. Everyone sees it.</h1>
+        <div class="home-hero-copy">
+            <div class="hero-kicker"><span class="signal-orb"></span> Live public competitions</div>
+            <h1>Watch the ranking move.</h1>
             <p class="hero-description">
-                A real-time competition board backed by SQL Server for durable events,
-                Redis sorted sets for fast ranking, and SignalR for instant updates.
+                Public standings that react to every score. Built for the moment a result
+                changes the order and everyone needs to see it.
             </p>
+            <div class="hero-proof">
+                <strong>@(competitions?.Count ?? 0)</strong>
+                <span>public boards available</span>
+            </div>
         </div>
-        <div class="architecture-note">
-            <span class="architecture-number">01</span>
-            <span>One score event becomes a new position for every connected viewer.</span>
+        <div class="hero-signal" aria-hidden="true">
+            <span class="hero-signal-label">Signal / live</span>
+            <span class="hero-signal-line"></span>
+            <span class="hero-signal-label hero-signal-bottom">every position matters</span>
         </div>
     </section>
 
@@ -27,7 +32,15 @@
                 <p class="eyebrow">Public boards</p>
                 <h2 id="competition-list-heading">Choose a competition</h2>
             </div>
-            <span class="muted-copy">Open to everyone</span>
+            <span class="competition-count">@LiveCount live now</span>
+        </div>
+
+        <div class="competition-toolbar">
+            <label class="search-control" for="competition-search">
+                <span class="search-glyph" aria-hidden="true">⌕</span>
+                <input id="competition-search" type="search" @bind="searchTerm" @bind:event="oninput" placeholder="Search public boards" />
+            </label>
+            <span class="toolbar-note"><span class="live-dot"></span> Updates arrive in real time</span>
         </div>
 
         @if (competitions is null)
@@ -44,21 +57,36 @@
                 <span>Seed a competition or make one live from the scorer workflow.</span>
             </div>
         }
+        else if (!VisibleCompetitions.Any())
+        {
+            <div class="empty-state" data-testid="no-matching-competitions">
+                <strong>No matching boards</strong>
+                <span>Try a different name or clear the search.</span>
+            </div>
+        }
         else
         {
             <div class="competition-grid">
-                @foreach (var competition in competitions)
+                @foreach (var competition in VisibleCompetitions)
                 {
                     <a class="competition-card" href="/leaderboards/@competition.Slug">
                         <div class="competition-card-topline">
                             <span class="status-pill @(competition.IsLive ? "live-pill" : "completed-pill")">
-                                @(competition.IsLive ? "LIVE" : "FINAL")
+                                @if (competition.IsLive)
+                                {
+                                    <span class="live-dot"></span>
+                                    <span>LIVE NOW</span>
+                                }
+                                else
+                                {
+                                    <span>FINAL</span>
+                                }
                             </span>
-                            <span class="competition-arrow">↗</span>
+                            <span class="competition-card-index">@((VisibleCompetitions.ToList().IndexOf(competition) + 1).ToString("00"))</span>
                         </div>
                         <h3>@competition.Name</h3>
                         <p>@(competition.Description ?? "View the public standings and score history.")</p>
-                        <span class="competition-url">/@competition.Slug</span>
+                        <span class="competition-card-footer"><span>@(competition.IsLive ? "Live standings" : "Final standings")</span><strong>Open board ↗</strong></span>
                     </a>
                 }
             </div>
@@ -68,6 +96,15 @@
 
 @code {
     private IReadOnlyList<PublicCompetitionView>? competitions;
+    private string searchTerm = string.Empty;
+
+    private int LiveCount => competitions?.Count(competition => competition.IsLive) ?? 0;
+
+    private IEnumerable<PublicCompetitionView> VisibleCompetitions =>
+        (competitions ?? [])
+            .Where(competition => string.IsNullOrWhiteSpace(searchTerm)
+                || competition.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
+                || competition.Description?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true);
 
     protected override async Task OnInitializedAsync()
     {
